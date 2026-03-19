@@ -146,12 +146,6 @@
         pointToLayer: function (feature, latlng) {
             const vehicleIcon = new LeafIcon({iconUrl: getIconUrl()});
             return L.marker(latlng, {icon: vehicleIcon});
-            // return L.circleMarker(latlng, {
-            //     radius: 5,
-            //     color: 'green',
-            //     fillColor: '#78be20',
-            //     fillOpacity: 1
-            // });
         }
     });
 
@@ -165,7 +159,7 @@
             // Depending on your data source, the properties available on "gtfsObject" may be different:
             tripId: gtfsObject.vehicle.trip.tripId,
             startTime: gtfsObject.vehicle.trip.startTime,
-            vehicleId: gtfsObject.vehicle.vehicle.id + (gtfsObject.vehicle.vehicle.label ? ' (' + gtfsObject.vehicle.vehicle.label + ')' : ''),
+            vehicleId: (gtfsObject.vehicle.vehicle ? gtfsObject.vehicle.vehicle.id + (gtfsObject.vehicle.vehicle.label ? ' (' + gtfsObject.vehicle.vehicle.label + ')' : '') : ''),
             timestamp: new Date(gtfsObject.vehicle.timestamp * 1000).toLocaleString()
         },
         geometry: {
