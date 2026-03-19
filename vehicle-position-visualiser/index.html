@@ -12,7 +12,9 @@
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/pbf@3.0.5/dist/pbf.js"></script>
+    <script src="https://unpkg.com/gtfs-realtime-pbf-js-module@1.0.0/gtfs-realtime.browser.proto.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
 	<style>
 		html, body {
@@ -157,8 +159,8 @@
         type: "Feature",
         properties: {
             // Depending on your data source, the properties available on "gtfsObject" may be different:
-            tripId: gtfsObject.vehicle.trip.tripId,
-            startTime: gtfsObject.vehicle.trip.startTime,
+            tripId: gtfsObject.vehicle.trip.trip_id,
+            startTime: gtfsObject.vehicle.trip.start_time,
             vehicleId: (gtfsObject.vehicle.vehicle ? gtfsObject.vehicle.vehicle.id + (gtfsObject.vehicle.vehicle.label ? ' (' + gtfsObject.vehicle.vehicle.label + ')' : '') : ''),
             timestamp: new Date(gtfsObject.vehicle.timestamp * 1000).toLocaleString()
         },
@@ -175,7 +177,7 @@
 
     function getApiUrl() {
         const mode = document.getElementById('mode-select').value;
-        return `https://api.opendata.transport.vic.gov.au/opendata/public-transport/gtfs/realtime/v1/${mode}/vehicle-positions?format=json`;
+        return `https://api.opendata.transport.vic.gov.au/opendata/public-transport/gtfs/realtime/v1/${mode}/vehicle-positions`;
     }
 
     async function fetchAndUpdateMap() {
@@ -190,7 +192,12 @@
                 document.getElementById('refresh-status').textContent = 'Error: ' + response.status + ' ' + response.statusText;
                 return;
             }
-            const responseData = await response.json();
+            const bufferRes = await response.arrayBuffer();
+            const pbf = new Pbf(new Uint8Array(bufferRes));
+            const gtfsr = FeedMessage.read(pbf);
+            //console.log("GTFS data! ", gtfsr.entity);
+
+            const responseData = gtfsr; //await response.json();
             const featureCollection = {
                 type: 'FeatureCollection',
                 features: gtfsArrayToGeojsonFeatures(responseData.entity)
@@ -250,7 +257,7 @@
     function updateFeaturesTable(features) {
         const tbody = document.getElementById('features-tbody');
         tbody.innerHTML = '';
-        document.getElementById('features-count').textContent = features.length ? '(' + features.length + ')' : '';
+        document.getElementById('features-count').textContent = features.length ? '(' + features.length + ')' : '(No data)';
         const cellClass = 'px-2 py-1 border-b border-gray-100 whitespace-nowrap';
         features.forEach((f) => {
             const [lon, lat] = f.geometry.coordinates;
