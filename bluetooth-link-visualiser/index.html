@@ -6,14 +6,11 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	
-	<title>Transport Victoria - Vehicle Position Visualiser</title>
+	<title>Transport Victoria - Bluetooth Link Visualiser</title>
 	
-	<link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
-
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="https://unpkg.com/pbf@3.0.5/dist/pbf.js"></script>
-    <script src="https://unpkg.com/gtfs-realtime-pbf-js-module@1.0.0/gtfs-realtime.browser.proto.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
 	<style>
@@ -68,21 +65,14 @@
 		<!-- Controls -->
 		<div class="flex flex-col flex-shrink-0 px-4 py-5 gap-3">
 			<h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-0">API Settings</h3>
-			<label class="text-xs font-semibold text-gray-600 block -mb-1" for="mode-select">Transport Mode</label>
-			<select id="mode-select"
-				class="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#78be20] focus:border-transparent transition">
-				<option value="metro">Metro Train</option>
-				<option value="tram" selected>Yarra Tram</option>
-				<option value="vline">V/Line</option>
-				<option value="bus">Metro Bus</option>
-			</select>
+			
 			<label class="text-xs font-semibold text-gray-600 block -mb-1" for="api-key-input">API Key</label>
 			<input id="api-key-input" type="password" placeholder="Enter API key…" value=""
 				class="w-full px-2 py-1.5 text-xs font-mono border border-gray-300 rounded-md bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#78be20] focus:border-transparent transition" />
 			<p class="text-[10px] text-gray-400 -mt-1">Get an API key from the <a href="https://opendata.transport.vic.gov.au" target="_blank" rel="noopener noreferrer" class="text-[#78be20] underline hover:opacity-75">Transport Victoria Open Data Portal</a>.</p>
 			<label class="text-xs font-semibold text-gray-600 block -mb-1" for="refresh-interval-input">Refresh interval (s)</label>
 			<div class="flex items-center gap-2">
-				<input id="refresh-interval-input" type="number" min="1" max="300" value="3"
+				<input id="refresh-interval-input" type="number" min="1" max="300" value="60"
 					class="flex-1 min-w-0 px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#78be20] focus:border-transparent transition" />
 				<button id="btn-toggle"
 					class="px-3 py-1.5 text-sm font-semibold rounded-md text-white bg-[#78be20] hover:opacity-90 transition-opacity cursor-pointer whitespace-nowrap">&#9654; Start</button>
@@ -96,12 +86,12 @@
 				<table id="features-table" class="w-full text-[10px] text-gray-700 border-collapse">
 					<thead class="sticky top-0 bg-gray-100 z-10">
 						<tr>
-							<th class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">Timestamp</th>
-							<th class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">Vehicle</th>
-							<th class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">Trip ID</th>
+							<th class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">ID</th>
+							<th class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">Name</th>
+							<th class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">Length</th>
+							<th class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">Direction</th>
+                            <th class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">Speed</th>
 							<th class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">Start</th>
-							<th class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">Lat</th>
-							<th class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">Lon</th>
 						</tr>
 					</thead>
 					<tbody id="features-tbody"></tbody>
@@ -122,67 +112,69 @@
 		attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 	}).addTo(map);
 
-    const LeafIcon = L.Icon.extend({
-		options: {
-			iconSize: [16, 16]
-		}
-	});
-    function getIconUrl() {
-        const mode = document.getElementById('mode-select').value;
-        switch (mode) {
-            case 'metro': return 'Melbourne_train_logo.svg';
-            case 'tram': return 'Melbourne_tram_logo.svg';
-            case 'bus': return 'Victoria_bus_logo.svg';
-            case 'vline': return 'VLine_logo.webp';
-            default: return '';
-        }
-    }
-
     function forEachFeature(feature, layer) {
-        var popupContent = '<b>'+ feature.properties.tripId +'</b><br>Vehicle: ' + feature.properties.vehicleId + '<br>Trip started: ' + feature.properties.startTime + '<br>Timestamp: ' + feature.properties.timestamp;
+        var popupContent = '<b>'+ feature.properties.id + ': ' + feature.properties.name +'</b><br>Length: ' + feature.properties.length + ' (m)<br>Direction: ' + feature.properties.direction + '<br>Speed: ' + feature.properties.speed + ' (km/h)';
         layer.bindPopup(popupContent);
     };
 
+    function getColorBySpeed(speed) {
+        if (speed <= 50) {
+            return 'red';
+        }
+        if (speed > 50 && speed < 80) {
+            return 'green';
+        }
+        else {
+            return 'blue';
+        }
+    }
+
+    function featureStyle(feature) {
+        return {
+            color: getColorBySpeed(feature.properties.speed)
+        };
+    }
+
     var geojson = L.geoJSON(null, {
         onEachFeature: forEachFeature,
-        pointToLayer: function (feature, latlng) {
-            const vehicleIcon = new LeafIcon({iconUrl: getIconUrl()});
-            return L.marker(latlng, {icon: vehicleIcon});
-        }
+        style: featureStyle
     });
 
     // Convert an array of GTFS objects to GeoJSON "Features" array (https://tools.ietf.org/html/rfc7946#section-3.2)
-    const gtfsArrayToGeojsonFeatures = (gtfsArray) => {
-    return gtfsArray.map((gtfsObject) => {
-        // console.log("gtfsObject", gtfsObject);
+    const arrayToGeojsonFeatures = (objArray) => {
+    return objArray.map((obj) => {
+        // console.log("obj", obj);
         return {
         type: "Feature",
         properties: {
-            // Depending on your data source, the properties available on "gtfsObject" may be different:
-            tripId: gtfsObject.vehicle.trip.trip_id,
-            startTime: gtfsObject.vehicle.trip.start_time,
-            vehicleId: (gtfsObject.vehicle.vehicle ? gtfsObject.vehicle.vehicle.id + (gtfsObject.vehicle.vehicle.label ? ' (' + gtfsObject.vehicle.vehicle.label + ')' : '') : ''),
-            timestamp: new Date(gtfsObject.vehicle.timestamp * 1000).toLocaleString()
+            // Depending on your data source, the properties available on "obj" may be different:
+            id: obj.id,
+            name: obj.name,
+            length: obj.length,
+            direction: obj.direction,
+            speed: obj.latest_stats.speed,
+            startTime: obj.latest_stats.interval_start
         },
         geometry: {
-            type: "Point",
-            coordinates: [
-            gtfsObject.vehicle.position.longitude,
-            gtfsObject.vehicle.position.latitude
-            ]
+            type: "LineString",
+            coordinates: obj.coordinates
         }
         };
     });
     };
 
     function getApiUrl() {
-        const mode = document.getElementById('mode-select').value;
-        return `https://api.opendata.transport.vic.gov.au/opendata/public-transport/gtfs/realtime/v1/${mode}/vehicle-positions`;
+        return 'https://api.opendata.transport.vic.gov.au/opendata/roads/bluetooth-travel-time/v1/links_geometry';
     }
 
     async function fetchAndUpdateMap() {
         const apiKey = document.getElementById('api-key-input').value.trim();
+        if (!apiKey) {
+            document.getElementById('refresh-status').textContent = 'Please enter API key.';
+            return;
+        }
         try {
+            document.getElementById('refresh-status').textContent = 'Fetching data...';
             const response = await fetch(getApiUrl(), {
                 headers: { 'KeyId': apiKey }
             });
@@ -192,15 +184,10 @@
                 document.getElementById('refresh-status').textContent = 'Error: ' + response.status + ' ' + response.statusText;
                 return;
             }
-            const bufferRes = await response.arrayBuffer();
-            const pbf = new Pbf(new Uint8Array(bufferRes));
-            const gtfsr = FeedMessage.read(pbf);
-            //console.log("GTFS data! ", gtfsr.entity);
-
-            const responseData = gtfsr; //await response.json();
+            const responseData = await response.json();
             const featureCollection = {
                 type: 'FeatureCollection',
-                features: gtfsArrayToGeojsonFeatures(responseData.entity)
+                features: arrayToGeojsonFeatures(responseData)
             };
             geojson.clearLayers();
             geojson.addData(featureCollection);
@@ -226,13 +213,13 @@
 
     function startRefresh() {
         if (refreshInterval) return;
+        document.getElementById('refresh-status').textContent = 'Refresh started: ' + new Date().toLocaleTimeString();
         fetchAndUpdateMap();
         refreshInterval = setInterval(fetchAndUpdateMap, getRefreshMs());
         const btn = document.getElementById('btn-toggle');
         btn.innerHTML = '&#9646;&#9646; Stop';
         btn.classList.remove('bg-[#78be20]');
         btn.classList.add('bg-red-500');
-        document.getElementById('refresh-status').textContent = 'Refresh started: ' + new Date().toLocaleTimeString();
     }
 
     function stopRefresh() {
@@ -251,11 +238,7 @@
     });
     document.getElementById('api-key-input').addEventListener('change', startRefresh);
     document.getElementById('refresh-interval-input').addEventListener('change', startRefresh);
-    document.getElementById('mode-select').addEventListener('change', () => {
-        stopRefresh();
-        startRefresh();
-    });
-
+    
     function updateFeaturesTable(features) {
         const tbody = document.getElementById('features-tbody');
         tbody.innerHTML = '';
@@ -266,7 +249,7 @@
             const p = f.properties;
             const tr = document.createElement('tr');
             tr.className = 'even:bg-white odd:bg-gray-50 hover:bg-green-50 transition-colors cursor-pointer';
-            [p.timestamp, p.vehicleId, p.tripId, p.startTime, lat.toFixed(5), lon.toFixed(5)].forEach((val) => {
+            [p.id, p.name, p.length, p.direction, p.speed, p.startTime].forEach((val) => {
                 const td = document.createElement('td');
                 td.className = cellClass;
                 td.textContent = val ?? '';
