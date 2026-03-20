@@ -8,6 +8,8 @@
 
     <title>Transport Victoria - Bluetooth Link Visualiser</title>
 
+    <link rel="shortcut icon" type="image/x-icon" href="../img/favicon.ico" />
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -96,7 +98,8 @@
             <!-- Features table -->
             <div class="flex flex-col flex-1 min-h-0 border-t border-gray-200">
                 <h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex-shrink-0 px-4 py-2">Data
-                    <span id="features-count" class="normal-case font-normal text-gray-400"></span></h3>
+                    <span id="features-count" class="normal-case font-normal text-gray-400"></span>
+                </h3>
                 <div class="overflow-auto flex-1 min-h-0">
                     <table id="features-table" class="w-full text-[10px] text-gray-700 border-collapse">
                         <thead class="sticky top-0 bg-gray-100 z-10">
@@ -118,7 +121,16 @@
                                     Speed</th>
                                 <th
                                     class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">
-                                    Start</th>
+                                    Travel Time</th>
+                                <th
+                                    class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">
+                                    Delay</th>
+                                <th
+                                    class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">
+                                    Congestion</th>
+                                <th
+                                    class="px-2 py-1 text-left font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">
+                                    Score</th>
                             </tr>
                         </thead>
                         <tbody id="features-tbody"></tbody>
@@ -140,30 +152,37 @@
         }).addTo(map);
 
         function forEachFeature(feature, layer) {
-            var popupContent = '<b>' + feature.properties.id + ': ' + feature.properties.name + '</b><br>Length: ' + feature.properties.length + ' (m)<br>Direction: ' + feature.properties.direction + '<br>Speed: ' + feature.properties.speed + ' (km/h)<br>Delay: ' + feature.properties.delay + ' (s)';
+            var popupContent = '<h1><b>' + feature.properties.id + ': ' + feature.properties.name + '</b></h1>' +
+                '<br>Length: ' + feature.properties.length + ' (m)' +
+                '<br>Direction: ' + feature.properties.direction +
+                '<br>Speed: ' + feature.properties.speed + ' (km/h)' +
+                '<br>Minimum Travel Time: ' + feature.properties.minimumTravelTime + ' (s)' +
+                '<br>Travel Time: ' + feature.properties.travelTime + ' (s)' +
+                '<br>Delay: ' + feature.properties.delay + ' (s)' +
+                '<br>Excess Delay: ' + feature.properties.excessDelay + ' (s)' +
+                '<br>Congestion: ' + feature.properties.congestion +
+                '<br>Score: ' + feature.properties.score;
             layer.bindPopup(popupContent);
         };
 
         function getColorByDelay(delay) {
-            if (delay >= 0 && delay <= 25) {
+            if (delay <= 30) { // less than or equal to 30s, minimal delay => green
                 return 'green';
             }
-            if (delay > 25 && delay <= 50) {
+            if (delay > 30 && delay <= 60) { // 30s to 1 minute, moderate delay => olive
                 return 'olive';
             }
-            if (delay > 50 && delay <= 75) {
+            if (delay > 60 && delay <= 90) { // 1 to 1.5 minutes, significant delay => orange
                 return 'orange';
             }
-            if (delay > 75 && delay <= 100) {
+            if (delay > 90 && delay <= 120) { // 1.5 to 2 minutes, severe delay => caramel
                 return 'caramel';
             }
-            if (delay > 100) {
+            if (delay > 120) { // more than 2 minutes, extreme delay => red
                 return 'red';
             }
-            else {
-                return 'aqua';
-            }
         }
+
         function featureStyle(feature) {
             return {
                 color: getColorByDelay(feature.properties.delay)
@@ -187,8 +206,13 @@
                         name: obj.name,
                         length: obj.length,
                         direction: obj.direction,
+                        minimumTravelTime: obj.minimum_tt,
+                        travelTime: obj.latest_stats.travel_time,
                         speed: obj.latest_stats.speed,
                         delay: obj.latest_stats.delay,
+                        excessDelay: obj.latest_stats.excess_delay,
+                        congestion: obj.latest_stats.congestion,
+                        score: obj.latest_stats.score,
                         startTime: obj.latest_stats.interval_start
                     },
                     geometry: {
@@ -285,7 +309,7 @@
                 const p = f.properties;
                 const tr = document.createElement('tr');
                 tr.className = 'even:bg-white odd:bg-gray-50 hover:bg-green-50 transition-colors cursor-pointer';
-                [p.id, p.name, p.length, p.direction, p.speed, p.startTime].forEach((val) => {
+                [p.id, p.name, p.length, p.direction, p.speed, p.travelTime, p.delay, p.congestion, p.score].forEach((val) => {
                     const td = document.createElement('td');
                     td.className = cellClass;
                     td.textContent = val ?? '';
