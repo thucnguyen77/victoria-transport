@@ -31,7 +31,7 @@ function forEachFeature(feature, layer) {
     layer.bindPopup(popupContent, { autoClose: false });
 };
 
-var geojsonProd = L.geoJSON(null, {
+var geojsonTram = L.geoJSON(null, {
     onEachFeature: forEachFeature,
     pointToLayer: function (feature, latlng) {
         const vehicleIcon = new LeafIcon({ iconUrl: getIconUrl('prod') });
@@ -67,7 +67,7 @@ var geojsonShape = L.geoJSON(null, {
 // Convert an array of GTFS objects to GeoJSON "Features" array (https://tools.ietf.org/html/rfc7946#section-3.2)
 const gtfsArrayToGeojsonFeatures = (gtfsArray) => {
     return gtfsArray
-        .sort((a, b) => a.vehicle.vehicle.id.localeCompare(b.vehicle.vehicle.id))
+        .sort((a, b) => a.vehicle.timestamp - b.vehicle.timestamp)
         .map((gtfsObject) => {
             // console.log("gtfsObject", gtfsObject);
             const gtfsTrip = gtfsTrips.find(t => t.trip_id === gtfsObject.vehicle.trip.trip_id);
@@ -184,25 +184,20 @@ function updateFeaturesTable(features, tbodyId, countElementId) {
 }
 
 async function refreshData() {
-    const apiKeyProd = document.getElementById('prod-api-key-input').value.trim();
-    const apiKeyTest = document.getElementById('test-api-key-input').value.trim();
-    const urlProd = "https://api.opendata.transport.vic.gov.au/opendata/public-transport/gtfs/realtime/v1/tram/vehicle-positions";
-    const urlTest = "https://test-api.opendata.transport.vic.gov.au/opendata/public-transport/gtfs/realtime/v1/tram/vehicle-positions";
-    var [dataProd, dataTest] = await Promise.all([
-        fetchVehiclePositionData(urlProd, apiKeyProd),
-        fetchVehiclePositionData(urlTest, apiKeyTest)
-    ]);
+    const apiKeyTram = document.getElementById('tram-api-key-input').value.trim();
+    if (!apiKeyTram) {
+        document.getElementById('refresh-status').textContent = 'Error: API key is required.';
+        return;
+    }
+    const urlTram = "https://api.opendata.transport.vic.gov.au/opendata/public-transport/gtfs/realtime/v1/tram/vehicle-positions";
+    var dataTram = await fetchVehiclePositionData(urlTram, apiKeyTram);
 
-    if (dataProd) {
-        updateVehiclePositions(dataProd, geojsonProd);
-        updateShapesOnMap(dataProd.features, geojsonShape);
-        updateFeaturesTable(dataProd.features, 'prod-features-tbody', 'prod-features-count');
+    if (dataTram) {
+        updateVehiclePositions(dataTram, geojsonTram);
+        updateShapesOnMap(dataTram.features, geojsonShape);
+        updateFeaturesTable(dataTram.features, 'tram-features-tbody', 'tram-features-count');
+        document.getElementById('refresh-status').textContent = 'Refreshed at: ' + new Date().toLocaleTimeString();
     }
-    if (dataTest) {
-        updateVehiclePositions(dataTest, geojsonTest);
-        updateFeaturesTable(dataTest.features, 'test-features-tbody', 'test-features-count');
-    }
-    document.getElementById('refresh-status').textContent = 'Refreshed at: ' + new Date().toLocaleTimeString();
 }
 
 // Refresh interval management
@@ -215,6 +210,11 @@ function getRefreshMs() {
 
 function startRefresh() {
     if (refreshInterval) return;
+    const apiKey = document.getElementById('tram-api-key-input').value.trim();
+    if (!apiKey) {
+        document.getElementById('refresh-status').textContent = 'Error: API key is required.';
+        return;
+    }
     refreshData();
     refreshInterval = setInterval(refreshData, getRefreshMs());
     const btn = document.getElementById('btn-toggle');

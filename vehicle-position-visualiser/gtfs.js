@@ -79,6 +79,6 @@ async function downloadAndUnzip(url) {
     await reader.close();
 }
 
-//const gtfsUrl = 'https://opendata.transport.vic.gov.au/dataset/3f4e292e-7f8a-4ffe-831f-1953be0fe448/resource/fb152201-859f-4882-9206-b768060b50ad/download/gtfs.zip';
-const gtfsUrl = 'data/gtfs.zip';
+const gtfsUrl = 'https://opendata.transport.vic.gov.au/dataset/3f4e292e-7f8a-4ffe-831f-1953be0fe448/resource/fb152201-859f-4882-9206-b768060b50ad/download/gtfs.zip';
+//const gtfsUrl = 'data/gtfs.zip';
 downloadAndUnzip(gtfsUrl).catch(console.error);
