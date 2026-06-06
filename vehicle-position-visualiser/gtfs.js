@@ -39,6 +39,9 @@ function gtfsShapeArrayToGeojsonFeatures(gtfsShapeArray) {
 
 async function downloadAndUnzip(url) {
     const response = await fetch(url);
+    if (!response.ok){
+        throw new Error(`HTTP error! Status: ${response.status}`);
+    }
     const blob = await response.blob();
     const reader = new zip.ZipReader(new zip.BlobReader(blob));
     const entries = await reader.getEntries();
