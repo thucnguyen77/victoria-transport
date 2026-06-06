@@ -72,7 +72,7 @@ const gtfsArrayToGeojsonFeatures = (gtfsArray) => {
             // console.log("gtfsObject", gtfsObject);
             const gtfsTrip = gtfsTrips.find(t => t.trip_id === gtfsObject.vehicle.trip.trip_id);
             if (gtfsTrip) {
-                console.log("GTFS trip found for trip_id:", gtfsObject.vehicle.trip.trip_id);
+                //console.log("GTFS trip found for trip_id:", gtfsObject.vehicle.trip.trip_id);
             }
             return {
                 type: "Feature",
@@ -112,7 +112,7 @@ async function fetchVehiclePositionData(url, apiKey) {
         const bufferRes = await response.arrayBuffer();
         const pbf = new Pbf(new Uint8Array(bufferRes));
         const gtfsr = FeedMessage.read(pbf);
-        console.log("Vehicle positions found: ", gtfsr.entity.length);
+        //console.log("Vehicle positions found: ", gtfsr.entity.length);
 
         const responseData = gtfsr; //await response.json();
         const featureCollection = {
@@ -143,12 +143,12 @@ function updateShapesOnMap(features, layer) {
         gtfsRoute: f.properties.gtfsRoute
     })))].filter(s => s.shapeId);
 
-    console.log("Unique shape IDs in current data:", uniqueShapeIds.length);
+    //console.log("Unique shape IDs in current data:", uniqueShapeIds.length);
 
     let shapeFeatures = gtfsShapes.filter(s => {
         return uniqueShapeIds.some(u => u.shapeId === s.properties.shapeId);
     });
-    console.log("Unique shape features:", shapeFeatures.length);
+    //console.log("Unique shape features:", shapeFeatures.length);
 
     shapeFeatures.forEach(f => {
         uniqueShapeIds.find(s => s.shapeId === f.properties.shapeId && (f.properties.gtfsRoute = s.gtfsRoute));
