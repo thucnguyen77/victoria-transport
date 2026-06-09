@@ -82,6 +82,6 @@ async function downloadAndUnzip(url) {
     await reader.close();
 }
 
-const gtfsUrl = 'http://data.ptv.vic.gov.au/downloads/gtfs.zip';
+const gtfsUrl = 'https://data.ptv.vic.gov.au/downloads/gtfs.zip';
 //const gtfsUrl = 'data/gtfs.zip';
 downloadAndUnzip(gtfsUrl).catch(console.error);
